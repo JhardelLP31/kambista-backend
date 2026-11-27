@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
-import { createHash, timingSafeEqual } from 'node:crypto';
+import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
 import { UnauthorizedDomainException } from '../../../../shared/domain/exceptions/domain.exception';
 import {
   AuthTokens,
@@ -31,10 +31,12 @@ export class JwtTokenService implements TokenService {
       this.jwtService.signAsync(payload, {
         secret: this.accessSecret,
         expiresIn: this.accessExpiresIn,
+        jwtid: randomUUID(),
       }),
       this.jwtService.signAsync(payload, {
         secret: this.refreshSecret,
         expiresIn: this.refreshExpiresIn,
+        jwtid: randomUUID(),
       }),
     ]);
 

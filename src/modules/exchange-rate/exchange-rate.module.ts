@@ -2,9 +2,11 @@ import { HttpModule } from "@nestjs/axios";
 import { CacheModule } from "@nestjs/cache-manager";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { AuthModule } from "../auth/auth.module";
 import { ExchangeRateMongoEntity, ExchangeRateSchema } from "./infrastructure/persistence/exchange-rate.schema";
 import { SyncExchangeRateUseCase } from "./application/use-cases/sync-exchange-rate.entity";
 import { GetLatestExchangeRateUseCase } from "./application/use-cases/get-latest-exchange-rate.use-case";
+import { ExchangeRateController } from "./infrastructure/controllers/exchange-rate.controller";
 import { ExchangeRateScheduler } from "./infrastructure/schedulers/exchange-rate.scheduler";
 import { EXCHANGE_RATE_REPOSITORY } from "./domain/repositories/exchange-rate.repository";
 import { MongoExchangeRateRepository } from "./infrastructure/persistence/mongo-exchange-rate.repository";
@@ -19,10 +21,12 @@ import { MemoryExchangeRateCache } from "./infrastructure/cache/memory-exchange-
     imports: [
         HttpModule,
         CacheModule.register(),
+        AuthModule,
         MongooseModule.forFeature([
             { name: ExchangeRateMongoEntity.name, schema: ExchangeRateSchema },
         ]),
     ],
+    controllers: [ExchangeRateController],
     providers: [
         SyncExchangeRateUseCase,
         GetLatestExchangeRateUseCase,

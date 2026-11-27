@@ -1,132 +1,139 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Kambista Backend — API de Cambio de Divisas
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST desarrollada con **NestJS**, **TypeScript**, **MongoDB** y **Clean Architecture + DDD** para la gestión de autenticación JWT con roles, sincronización automática del tipo de cambio SUNAT y operaciones de cambio entre `USD` y `PEN`.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 📋 Requisitos previos
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Node.js** `>= 20` (probado con `v24.x`)
+- **npm** `>= 10`
+- **Docker** y **Docker Compose** (o una instancia local/remota de MongoDB `7.0+`)
 
-## Project setup
+---
 
+## 🚀 Cómo levantar el proyecto en local
+
+1. **Clonar el repositorio e instalar dependencias:**
+   ```bash
+   git clone <URL_DEL_REPOSITORIO>
+   cd kambista-backend
+   npm install
+   ```
+
+2. **Configurar variables de entorno:**
+   Copia el archivo de ejemplo y ajusta tus secretos (los secretos JWT deben tener al menos 16 caracteres):
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Levantar MongoDB con Docker:**
+   ```bash
+   docker compose up -d
+   ```
+
+4. **Ejecutar la aplicación:**
+   ```bash
+   # Modo desarrollo (watch)
+   npm run start:dev
+
+   # Modo producción
+   npm run build
+   npm run start:prod
+   ```
+
+5. **Documentación interactiva (Swagger):**
+   Una vez levantado el servidor, abre:
+   - [http://localhost:3000/docs](http://localhost:3000/docs)
+
+---
+
+## 🔐 Variables de entorno (`.env.example`)
+
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `PORT` | Puerto HTTP de la API | `3000` |
+| `NODE_ENV` | Entorno (`development`, `production`, `test`) | `development` |
+| `MONGO_URI` | Cadena de conexión a MongoDB | `mongodb://admin:adminpassword@localhost:27017/kambista?authSource=admin` |
+| `JWT_SECRET` | Secreto para firmar `access_token` (mín. 16 chars) | `your_jwt_secret_key_min_16_chars` |
+| `JWT_EXPIRES_IN` | Tiempo de expiración del `access_token` | `15m` |
+| `JWT_REFRESH_SECRET` | Secreto para firmar `refresh_token` (mín. 16 chars) | `your_jwt_refresh_secret_key_min_16_chars` |
+| `JWT_REFRESH_EXPIRES_IN` | Tiempo de expiración del `refresh_token` | `7d` |
+| `SUNAT_API_URL` | Endpoint proveedor del tipo de cambio SUNAT | `https://api.apis.net.pe/v1/tipo-cambio-sunat` |
+
+> Todas las variables son validadas al arranque mediante `Joi` en `AppModule` (fail-fast).
+
+---
+
+## 🔌 Endpoints principales
+
+### Autenticación (`/v1/auth`)
+- `POST /v1/auth/register` — Registra un usuario con rol por defecto `user`.
+- `POST /v1/auth/login` — Devuelve `{ access_token, refresh_token, usuario }`.
+- `POST /v1/auth/refresh` — Rota el `refresh_token` y emite un nuevo `access_token`.
+
+### Tipo de cambio (`/v1/exchange-rate`) *(Requiere Bearer JWT)*
+- `GET /v1/exchange-rate/latest` — Obtiene el tipo de cambio más reciente (caché en memoria / MongoDB).
+- *Job automático:* cada **30 segundos** (y al iniciar el módulo) sincroniza desde `SUNAT_API_URL` hacia MongoDB y actualiza la caché.
+
+### Transacciones (`/v1/transactions`) *(Requiere Bearer JWT)*
+- `POST /v1/transactions` — Calcula y registra una solicitud de cambio (`USD → PEN` usa `venta`, `PEN → USD` usa `compra`).
+- `GET /v1/transactions/history?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD&userId=...`
+  - Rol `user`: siempre visualiza **solo su propio** historial (ignora `userId` aunque se envíe).
+  - Rol `admin`: puede enviar `userId` para consultar el historial de otro usuario.
+  - Paginación opcional: enviando `?page=1&limit=20` responde `{ data, meta }`; sin estos parámetros devuelve el array directo `[...]`.
+
+### Promover un usuario a `admin` en MongoDB
+Por seguridad, el registro siempre asigna `rol: "user"`. Para probar flujos de `admin` en local:
 ```bash
-$ npm install
+docker exec -it kambista_mongo mongosh -u admin -p adminpassword --authenticationDatabase admin kambista --eval "db.users.updateOne({ email: 'juan@example.com' }, { \$set: { rol: 'admin' } })"
 ```
 
-## Compile and run the project
+---
+
+## 🧪 Ejecutar pruebas y calidad de código
 
 ```bash
-# development
-$ npm run start
+# Pruebas unitarias
+npm test
 
-# watch mode
-$ npm run start:dev
+# Cobertura de pruebas
+npm run test:cov
 
-# production mode
-$ npm run start:prod
+# Pruebas E2E (flujo completo HTTP sin depender de servicios externos)
+npm run test:e2e
+
+# Linter con type-checking (oxlint)
+npm run lint
+
+# Build de producción
+npm run build
 ```
 
-## Run tests
+---
 
-```bash
-# unit tests
-$ npm run test
+## 🏛️ Arquitectura y decisiones técnicas
 
-# e2e tests
-$ npm run test:e2e
+### 1. Clean Architecture + DDD por Bounded Contexts
+El proyecto está organizado en `src/modules/` por contextos (`auth`, `exchange-rate`, `transactions`) y `src/shared/`, aplicando estrictamente la **Regla de Dependencia**:
+- **`domain/`**: Entidades puras (`User`, `ExchangeRate`, `Transaction`), Value/Enum types, interfaces de repositorio y excepciones de dominio sin ninguna dependencia de NestJS o Mongoose. Las entidades usan constructores privados y métodos fábrica (`create`, `createFromExchange`) para impedir estados inválidos en memoria.
+- **`application/`**: Casos de uso (`RegisterUseCase`, `LoginUseCase`, `SyncExchangeRateUseCase`, `CreateTransactionUseCase`, etc.) y puertos (`Symbol` tokens) para inversión de dependencias.
+- **`infrastructure/`**: Adaptadores concretos (Controllers, DTOs con `class-validator`, Swagger, Schemas/Repositorios Mongoose, Bcrypt, Passport JWT, Cron Scheduler y Cliente HTTP SUNAT).
 
-# test coverage
-$ npm run test:cov
-```
+### 2. Desacoplamiento entre módulos (Anti-Corruption Layer)
+El módulo `transactions` no importa entidades ni repositorios de `exchange-rate`. Define su propio puerto `ExchangeRateReader` y en infraestructura `ExchangeRateModuleAdapter` delega en `GetLatestExchangeRateUseCase`.
 
-## Deployment
+### 3. Caché en memoria (Cache-Aside) e índices en MongoDB
+- `SyncExchangeRateUseCase` persiste cada registro en MongoDB y refresca `MemoryExchangeRateCache` (TTL 60s).
+- `GetLatestExchangeRateUseCase` lee primero de memoria para evitar consultas innecesarias a MongoDB en cada transacción; en caso de *cache miss*, consulta MongoDB usando un índice descendente `{ createdAt: -1 }` y vuelve a poblar la caché.
+- En `transactions`, el índice compuesto `{ userId: 1, fecha: -1 }` optimiza las consultas del historial por rango de fechas.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+### 4. Seguridad aplicada
+- **Contraseñas**: hasheadas con `bcrypt` (cost factor 10) y excluidas mediante `toPublicProfile()`.
+- **Refresh tokens con rotación y SHA-256**: en lugar de `bcrypt` (que trunca entradas a 72 bytes, lo que truncaría un JWT antes de su firma), los `refresh_token` se almacenan con hash **SHA-256** y se verifican con `crypto.timingSafeEqual`, invalidando el token previo en cada rotación.
+- **Mensajes genéricos en login**: un usuario inexistente y una contraseña incorrecta devuelven el mismo error (`401 Credenciales inválidas`) para evitar enumeración de correos.
+- **Rate limiting**: `@nestjs/throttler` limita intentos en `/v1/auth/login` y `/v1/auth/register` a 5 peticiones/minuto.
+- **Manejo global de errores y logging**: `AllExceptionsFilter` traduce excepciones de dominio a códigos HTTP y oculta trazas internas ante errores 500; `LoggingInterceptor` emite logs estructurados JSON con método, ruta, `userId`, status y duración.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
-
-To add it to this project, run this and approve the code it prints at [observe.nestjs.com/link](https://observe.nestjs.com/link) - signing up for free if you have no account:
-
-```bash
-$ npx @nestjs/observe link
-```
-
-It installs `@nestjs/observe`, wires it into `AppModule` and `main.ts`, and writes the app key and secret into `.env`, which every `nest start` script (`start`, `start:dev`, `start:debug`) then loads. In production, set `OBSERVE_APP_KEY` and `OBSERVE_APP_SECRET` in the environment instead.
-
-Or do it by hand:
-
-```bash
-$ npm install @nestjs/observe
-```
-
-Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it takes a single import and an app key.
-
-The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observe](https://observe.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 5. Pruebas E2E deterministas
+Gracias a la inyección de dependencias mediante puertos (`Symbol`), `test/app.e2e-spec.ts` ejecuta todo el pipeline HTTP real (DTOs, `ValidationPipe`, `ThrottlerGuard`, `JwtAuthGuard`, `AllExceptionsFilter`, Casos de Uso, Caché, Bcrypt y JWT) usando repositorios in-memory y un proveedor fake de SUNAT, sin requerir MongoDB ni red externa.

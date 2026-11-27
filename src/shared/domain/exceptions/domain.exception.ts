@@ -37,7 +37,7 @@ export class ConflictDomainException extends DomainException {
     }
 }
 
-export class UnathorizedDomainException extends DomainException {
+export class UnauthorizedDomainException extends DomainException {
     constructor(message: string){
         super(message, DomainErrorCode.UNAUTHORIZED);
     }

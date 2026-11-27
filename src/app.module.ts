@@ -1,8 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
+import { AuthModule } from './modules/auth/auth.module';
 import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module';
 
 @Module({
@@ -12,7 +15,7 @@ import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module
       validationSchema: Joi.object({
         PORT: Joi.number().default(3000),
         NODE_ENV: Joi.string()
-          .valid('development','production','test')
+          .valid('development', 'production', 'test')
           .default('development'),
         MONGO_URI: Joi.string().required(),
         JWT_SECRET: Joi.string().min(16).required(),
@@ -30,8 +33,21 @@ import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module
       }),
     }),
     ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60_000,
+        limit: 100,
+      },
+    ]),
+    AuthModule,
     ExchangeRateModule,
   ],
-
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

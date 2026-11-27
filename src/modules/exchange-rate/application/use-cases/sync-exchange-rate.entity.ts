@@ -13,7 +13,7 @@ export class SyncExchangeRateUseCase {
         @Inject(EXCHANGE_RATE_PROVIDER)
         private readonly provider: ExchangeRateProvider,
         @Inject(EXCHANGE_RATE_REPOSITORY)
-        private readonly respository: ExchangeRateRepository,
+        private readonly repository: ExchangeRateRepository,
         @Inject(EXCHANGE_RATE_CACHE)
         private readonly cache: ExchangeRateCache,
     ){}
@@ -29,7 +29,7 @@ export class SyncExchangeRateUseCase {
             fechaProveedor:  externalData.fecha,
         });
 
-        const saved = await this.respository.save(exchangeRate);
+        const saved = await this.repository.save(exchangeRate);
         await this.cache.setLatest(saved);
 
         return saved;

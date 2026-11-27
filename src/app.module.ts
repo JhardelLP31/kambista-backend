@@ -11,7 +11,7 @@ import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module
       isGlobal: true,
       validationSchema: Joi.object({
         PORT: Joi.number().default(3000),
-        NODE_EMV: Joi.string()
+        NODE_ENV: Joi.string()
           .valid('development','production','test')
           .default('development'),
         MONGO_URI: Joi.string().required(),

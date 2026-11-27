@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { SyncExchangeRateUseCase } from "../../application/use-cases/exchange-rate.entity";
+import { SyncExchangeRateUseCase } from "../../application/use-cases/sync-exchange-rate.entity";
 import { Cron } from "@nestjs/schedule";
 
 

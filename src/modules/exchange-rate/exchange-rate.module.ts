@@ -3,7 +3,7 @@ import { CacheModule } from "@nestjs/cache-manager";
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { ExchangeRateMongoEntity, ExchangeRateSchema } from "./infrastructure/persistence/exchange-rate.schema";
-import { SyncExchangeRateUseCase } from "./application/use-cases/exchange-rate.entity";
+import { SyncExchangeRateUseCase } from "./application/use-cases/sync-exchange-rate.entity";
 import { GetLatestExchangeRateUseCase } from "./application/use-cases/get-latest-exchange-rate.use-case";
 import { ExchangeRateScheduler } from "./infrastructure/schedulers/exchange-rate.scheduler";
 import { EXCHANGE_RATE_REPOSITORY } from "./domain/repositories/exchange-rate.repository";
@@ -20,7 +20,7 @@ import { MemoryExchangeRateCache } from "./infrastructure/cache/memory-exchange-
         HttpModule,
         CacheModule.register(),
         MongooseModule.forFeature([
-            { name: ExchangeRateMongoEntity.name, schema: ExchangeRateSchema},
+            { name: ExchangeRateMongoEntity.name, schema: ExchangeRateSchema },
         ]),
     ],
     providers: [
@@ -43,4 +43,4 @@ import { MemoryExchangeRateCache } from "./infrastructure/cache/memory-exchange-
     exports: [GetLatestExchangeRateUseCase],
 })
 
-export class ExchangeRateModule {}
+export class ExchangeRateModule { }

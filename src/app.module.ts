@@ -7,6 +7,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import * as Joi from 'joi';
 import { AuthModule } from './modules/auth/auth.module';
 import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module';
+import { TransactionsModule } from './modules/transactions/transactions.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module
     ]),
     AuthModule,
     ExchangeRateModule,
+    TransactionsModule,
   ],
   providers: [
     {

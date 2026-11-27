@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
+import { ExchangeRateModule } from './modules/exchange-rate/exchange-rate.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import * as Joi from 'joi';
         uri: configService.get<string>('MONGO_URI'),
       }),
     }),
+    ScheduleModule.forRoot(),
+    ExchangeRateModule,
   ],
 
 })

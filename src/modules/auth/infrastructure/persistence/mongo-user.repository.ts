@@ -2,8 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { User } from '../../domain/entities/user.entity';
-import { UserRepository } from '../../domain/repositories/user.repository';
+import {
+  FindUsersFilter,
+  UserRepository,
+} from '../../domain/repositories/user.repository';
 import { UserDocument, UserMongoEntity } from './user.schema';
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 @Injectable()
 export class MongoUserRepository implements UserRepository {
@@ -24,13 +31,37 @@ export class MongoUserRepository implements UserRepository {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    const doc = await this.model.findOne({ email: email.trim().toLowerCase() }).exec();
+    const doc = await this.model
+      .findOne({ email: email.trim().toLowerCase() })
+      .exec();
     return doc ? this.toDomain(doc) : null;
   }
 
   async findById(id: string): Promise<User | null> {
     const doc = await this.model.findById(id).exec();
     return doc ? this.toDomain(doc) : null;
+  }
+
+  async findAll(filter: FindUsersFilter = {}): Promise<User[]> {
+    const limit = filter.limit ?? 50;
+    const search = filter.search?.trim();
+
+    const queryFilter = search
+      ? {
+          $or: [
+            { nombre: { $regex: escapeRegex(search), $options: 'i' } },
+            { email: { $regex: escapeRegex(search), $options: 'i' } },
+          ],
+        }
+      : {};
+
+    const docs = await this.model
+      .find(queryFilter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .exec();
+
+    return docs.map((doc) => this.toDomain(doc));
   }
 
   async updateRefreshTokenHash(

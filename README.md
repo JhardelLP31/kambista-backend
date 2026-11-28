@@ -72,6 +72,9 @@ API REST desarrollada con **NestJS**, **TypeScript**, **MongoDB** y **Clean Arch
 - `POST /v1/auth/login` — Devuelve `{ access_token, refresh_token, usuario }`.
 - `POST /v1/auth/refresh` — Rota el `refresh_token` y emite un nuevo `access_token`.
 
+### Usuarios (`/v1/users`) *(Requiere Bearer JWT + rol `admin`)*
+- `GET /v1/users?search=...&limit=50` — Lista perfiles públicos (`{ id, nombre, email, rol }`) para facilitar la selección de clientes en el historial del administrador (`403 Forbidden` para rol `user`).
+
 ### Tipo de cambio (`/v1/exchange-rate`) *(Requiere Bearer JWT)*
 - `GET /v1/exchange-rate/latest` — Obtiene el tipo de cambio más reciente (caché en memoria / MongoDB).
 - *Job automático:* cada **30 segundos** (y al iniciar el módulo) sincroniza desde `SUNAT_API_URL` hacia MongoDB y actualiza la caché.
@@ -134,6 +137,7 @@ El módulo `transactions` no importa entidades ni repositorios de `exchange-rate
 - **Mensajes genéricos en login**: un usuario inexistente y una contraseña incorrecta devuelven el mismo error (`401 Credenciales inválidas`) para evitar enumeración de correos.
 - **Rate limiting**: `@nestjs/throttler` limita intentos en `/v1/auth/login` y `/v1/auth/register` a 5 peticiones/minuto.
 - **Manejo global de errores y logging**: `AllExceptionsFilter` traduce excepciones de dominio a códigos HTTP y oculta trazas internas ante errores 500; `LoggingInterceptor` emite logs estructurados JSON con método, ruta, `userId`, status y duración.
+- **Control de acceso basado en roles (RBAC)**: `RolesGuard` + `@Roles(UserRole.ADMIN)` protegen `GET /v1/users` (`403 Forbidden` para `user`), mientras `GET /v1/transactions/history` aplica aislamiento de datos según el rol del JWT.
 
 ### 5. Pruebas E2E deterministas
 Gracias a la inyección de dependencias mediante puertos (`Symbol`), `test/app.e2e-spec.ts` ejecuta todo el pipeline HTTP real (DTOs, `ValidationPipe`, `ThrottlerGuard`, `JwtAuthGuard`, `AllExceptionsFilter`, Casos de Uso, Caché, Bcrypt y JWT) usando repositorios in-memory y un proveedor fake de SUNAT, sin requerir MongoDB ni red externa.

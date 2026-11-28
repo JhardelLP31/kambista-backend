@@ -23,6 +23,7 @@ describe('RefreshTokenUseCase', () => {
       save: jest.fn(),
       findByEmail: jest.fn(),
       findById: jest.fn(),
+      findAll: jest.fn(),
       updateRefreshTokenHash: jest.fn(),
     };
     tokenService = {

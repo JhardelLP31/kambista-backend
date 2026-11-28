@@ -11,15 +11,18 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { PASSWORD_HASHER } from '../src/modules/auth/application/ports/password-hasher.port';
 import { TOKEN_SERVICE } from '../src/modules/auth/application/ports/token-service.port';
+import { ListUsersUseCase } from '../src/modules/auth/application/use-cases/list-users.use-case';
 import { LoginUseCase } from '../src/modules/auth/application/use-cases/login.use-case';
 import { RefreshTokenUseCase } from '../src/modules/auth/application/use-cases/refresh-token.use-case';
 import { RegisterUseCase } from '../src/modules/auth/application/use-cases/register.use-case';
 import { User, UserRole } from '../src/modules/auth/domain/entities/user.entity';
 import {
+  FindUsersFilter,
   USER_REPOSITORY,
   UserRepository,
 } from '../src/modules/auth/domain/repositories/user.repository';
 import { AuthController } from '../src/modules/auth/infrastructure/controllers/auth.controller';
+import { UsersController } from '../src/modules/auth/infrastructure/controllers/users.controller';
 import { JwtAuthGuard } from '../src/modules/auth/infrastructure/guards/jwt-auth.guard';
 import { RolesGuard } from '../src/modules/auth/infrastructure/guards/roles.guard';
 import { BcryptPasswordHasher } from '../src/modules/auth/infrastructure/security/bcrypt-password.hasher';
@@ -81,6 +84,21 @@ class InMemoryUserRepository implements UserRepository {
 
   async findById(id: string): Promise<User | null> {
     return this.users.find((u) => u.id === id) ?? null;
+  }
+
+  async findAll(filter: FindUsersFilter = {}): Promise<User[]> {
+    const limit = filter.limit ?? 50;
+    const search = filter.search?.trim().toLowerCase();
+
+    const filtered = search
+      ? this.users.filter(
+          (u) =>
+            u.nombre.toLowerCase().includes(search) ||
+            u.email.toLowerCase().includes(search),
+        )
+      : [...this.users];
+
+    return filtered.reverse().slice(0, limit);
   }
 
   async updateRefreshTokenHash(
@@ -222,6 +240,7 @@ describe('Kambista API (e2e)', () => {
       ],
       controllers: [
         AuthController,
+        UsersController,
         ExchangeRateController,
         TransactionsController,
       ],
@@ -230,6 +249,7 @@ describe('Kambista API (e2e)', () => {
         RegisterUseCase,
         LoginUseCase,
         RefreshTokenUseCase,
+        ListUsersUseCase,
         JwtStrategy,
         JwtAuthGuard,
         RolesGuard,
@@ -497,6 +517,37 @@ describe('Kambista API (e2e)', () => {
       page: 1,
       limit: 1,
       totalPages: 2,
+    });
+  });
+
+  it('should restrict GET /v1/users to admin role and return public profiles', async () => {
+    await request(app.getHttpServer()).get('/v1/users').expect(401);
+
+    await request(app.getHttpServer())
+      .get('/v1/users')
+      .set('Authorization', `Bearer ${userToken}`)
+      .expect(403);
+
+    const allRes = await request(app.getHttpServer())
+      .get('/v1/users')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(Array.isArray(allRes.body)).toBe(true);
+    expect(allRes.body).toHaveLength(3);
+    expect(allRes.body[0].passwordHash).toBeUndefined();
+    expect(allRes.body[0].refreshTokenHash).toBeUndefined();
+
+    const searchRes = await request(app.getHttpServer())
+      .get('/v1/users?search=juan')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .expect(200);
+
+    expect(searchRes.body).toHaveLength(1);
+    expect(searchRes.body[0]).toMatchObject({
+      id: userId,
+      email: 'juan@example.com',
+      rol: 'user',
     });
   });
 
